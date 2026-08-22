@@ -1,0 +1,15 @@
+# Copies of the original addons this fork derives from. Kept locally for
+# reference and diffing; the upstream repositories are the canonical source:
+#   https://github.com/GetAwayCoxn/Rune-Helper
+#   https://github.com/GetAwayCoxn/Pup-Helper
+reference/
+
+# Python tooling noise
+__pycache__/
+*.pyc
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
