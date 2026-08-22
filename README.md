@@ -79,9 +79,11 @@ Fixed along the way:
 
 - **Shika Shadows checkbox did nothing** — ninhelper tested the option's
   table rather than its value, so the fallback was permanently on.
-- **Redundant casts** — naming the same element in two slots queued the
-  ability more times than needed. Verified across all 4096 slot/buff
-  combinations: 144 differ, every one the original over-firing.
+- **"Unable to use job ability" spam** — the originals queued several runes
+  or maneuvers in one tick, but each shares a single recast timer, so all
+  but the first failed. One cast per tick now; stacking the same element
+  three times (`Fire Fire Fire`, `Ignis Ignis Ignis`) works exactly as
+  before, one stack per recast.
 - **Shadow tier fallback** — ninhelper stopped at the highest known tier
   even when it was recasting; this drops to the next tier that is ready.
 - **4+ shadows** — `Copy Image (4+)` now counts as shadows up.

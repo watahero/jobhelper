@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.1 — 2026-08-20
+
+### Fixed
+- Runes and maneuvers are now cast one per tick. Each shares a single
+  recast timer, so queuing several at once (as the originals and 2.0.0
+  did) only produced "Unable to use job ability" for all but the first.
+  Stacking the same element three times is unaffected and verified.
+
+### Changed
+- Corrected the 2.0.0 note claiming the originals wasted charges on
+  duplicate-element slots. They did not; the extra queued casts failed
+  harmlessly. The only real difference was the message spam above.
+
 ## 2.0.0 — 2026-08-20
 
 First release of the fork. Merges runehelper 1.07, puphelper 1.09 and
@@ -21,7 +34,6 @@ ninhelper 1.02 (GetAwayCoxn) into a single addon.
 
 ### Fixed (relative to the originals)
 - ninhelper's Shika Shadows checkbox was inert (tested the table, not the value).
-- Duplicate-element slots queued redundant casts (verified exhaustively).
 - Shadow tiering now falls back to the next *ready* tier.
 - `Copy Image (4+)` is recognised as shadows up.
 - puphelper 1.09's `autcooldown` typo.

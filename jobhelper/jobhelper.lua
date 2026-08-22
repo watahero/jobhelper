@@ -13,7 +13,7 @@
 
 addon.name      = 'jobhelper';
 addon.author    = 'watahero';
-addon.version   = '2.0.0';
+addon.version   = '2.0.1';
 addon.desc      = 'RUN/PUP/NIN helpers in one compact bar for CatsEyeXI. Fork of runehelper, puphelper and ninhelper by GetAwayCoxn.';
 addon.link      = 'https://github.com/watahero/jobhelper';
 
@@ -24,9 +24,9 @@ addon.link      = 'https://github.com/watahero/jobhelper';
     local changes those had picked up (rate limits, the resting guard, the
     widened incapacitation list, element hints, '/rh set', 4s maneuvers).
 
-    Modules gate themselves. RUN is the only one that works as a subjob, so
-    at most two are ever live at once -- your main job's module, plus RUN if
-    you are /RUN -- and the window stacks whichever are showing.
+    Modules gate themselves. RUN and NIN also work as subjobs, so at most
+    two are ever live at once -- your main job's module, plus one for a
+    /RUN or /NIN sub -- and the bar stacks whichever are showing.
 
     Why the shared context matters: runehelper rebuilt the buff table once
     per rune, and puphelper once per maneuver, each time walking all 32 buff

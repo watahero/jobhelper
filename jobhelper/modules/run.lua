@@ -118,8 +118,12 @@ function M.Tick(ctx, cfg)
     -- rune name is certain to resolve as an ability, which is why
     -- runehelper's own comment noted the timer always reported as Ignis.
     if (#wanted > 0 and ctx:Ready(wanted[1]) and ctx:Throttle('run.rune', 2)) then
-        for _, name in ipairs(util.RotationNeeds(wanted, ctx.buffs)) do
-            util.Cast('/ja "' .. name .. '" <me>');
+        -- One cast per tick: all runes share a recast, so a second queued
+        -- rune only fails with "Unable to use job ability". The throttle
+        -- brings us back for the next one once the timer clears.
+        local needed = util.RotationNeeds(wanted, ctx.buffs);
+        if (#needed > 0) then
+            util.Cast('/ja "' .. needed[1] .. '" <me>');
         end
     end
 

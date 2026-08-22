@@ -168,10 +168,11 @@ end
     already up. Naming the same element twice asks for two stacks of it.
 
     This replaces two ~60-line blocks of nested conditionals that said the
-    same thing. Worth noting one behavioural difference: runehelper's slot 1
-    only ever fired when the element was completely absent, so picking the
-    same rune in slots 1 and 2 built the second stack more slowly than
-    picking it in slots 2 and 3. Here every slot pulls its weight.
+    same thing. Compared exhaustively (tools/rotation_equiv.py), the only
+    difference is that the originals sometimes queued the same ability twice
+    in one tick when one use was needed; both reach the requested stacks.
+    Callers cast only the first entry per tick anyway, since runes and
+    maneuvers each share a single recast timer.
 ]]--
 function util.RotationNeeds(slots, counts)
     local wanted = {};

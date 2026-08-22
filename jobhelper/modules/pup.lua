@@ -134,8 +134,12 @@ function M.Tick(ctx, cfg)
             end
         end
 
-        for _, name in ipairs(util.RotationNeeds(wanted, ctx.buffs)) do
-            util.Cast('/ja "' .. name .. '" <me>');
+        -- One cast per tick: maneuvers share a recast, so extra queued ones
+        -- only fail with "Unable to use job ability". The 4s throttle comes
+        -- back for the next stack once the timer clears.
+        local needed = util.RotationNeeds(wanted, ctx.buffs);
+        if (#needed > 0) then
+            util.Cast('/ja "' .. needed[1] .. '" <me>');
         end
     end
 
