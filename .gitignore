@@ -13,3 +13,7 @@ __pycache__/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Release archives are built and attached to GitHub releases, not committed
+*.zip
+
