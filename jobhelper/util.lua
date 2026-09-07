@@ -105,6 +105,22 @@ function util.SpellLevel(spell, jobId)
     return nil;
 end
 
+--[[ The level this character counts as for a job, main or sub, or 0. ]]--
+function util.JobLevel(ctx, jobId)
+    if (ctx.mainJob == jobId) then
+        return ctx.mainLevel;
+    elseif (ctx.subJob == jobId) then
+        return ctx.subLevel;
+    end
+    return 0;
+end
+
+--[[ Whether the character currently has a job ability, resolved by name. ]]--
+function util.HasAbilityByName(player, name)
+    local ability = util.GetAbility(name);
+    return ability ~= nil and player:HasAbility(ability.Id);
+end
+
 ----------------------------------------------------------------------------
 -- Per-frame state
 ----------------------------------------------------------------------------
@@ -116,19 +132,31 @@ end
     runehelper did 8 passes over 32 buffs (256 resource lookups per frame)
     and puphelper did 9. One pass gives every module the same answer.
 ]]--
+-- Buff id -> base display name, resolved once per id for the life of the
+-- process (resource strings are immutable). false marks ids with no name.
+local buff_name_cache = {};
+
 function util.ScanBuffs(player)
     local counts = {};
-    local res = AshitaCore:GetResourceManager();
 
     for _, id in pairs(player:GetBuffs()) do
         if (id ~= nil and id > 0 and id < 1024) then
-            local name = res:GetString('buffs.names', id);
-            if (name ~= nil and name ~= '') then
-                -- Stacking buffs report as 'Copy Image (3)' -- and the top
-                -- tier as 'Copy Image (4+)', plus sign included. Index by
-                -- the base name so callers can ask for 'Copy Image' and get
-                -- an answer regardless of how many shadows are up.
-                local base = name:match('^(.-)%s*%([%d%+]+%)$') or name;
+            local base = buff_name_cache[id];
+            if (base == nil) then
+                local name = AshitaCore:GetResourceManager():GetString('buffs.names', id);
+                if (name ~= nil and name ~= '') then
+                    -- Stacking buffs report as 'Copy Image (3)' -- and the
+                    -- top tier as 'Copy Image (4+)', plus sign included.
+                    -- Index by the base name so callers can ask for
+                    -- 'Copy Image' whatever the stack size.
+                    base = name:match('^(.-)%s*%([%d%+]+%)$') or name;
+                else
+                    base = false;
+                end
+                buff_name_cache[id] = base;
+            end
+
+            if (base ~= false) then
                 counts[base] = (counts[base] or 0) + 1;
             end
         end

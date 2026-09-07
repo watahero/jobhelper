@@ -60,14 +60,8 @@ M.defaults = T{
 
 ----------------------------------------------------------------------------
 
---[[ The level this character counts as for RUN purposes, or 0 if not RUN. ]]--
 local function RuneLevel(ctx)
-    if (ctx.mainJob == util.job.RUN) then
-        return ctx.mainLevel;
-    elseif (ctx.subJob == util.job.RUN) then
-        return ctx.subLevel;
-    end
-    return 0;
+    return util.JobLevel(ctx, util.job.RUN);
 end
 
 --[[
@@ -87,8 +81,7 @@ local function MaxSlots(ctx, cfg)
 end
 
 local function HasPulse(ctx)
-    local ability = util.GetAbility('Vivacious Pulse');
-    return ability ~= nil and ctx.player:HasAbility(ability.Id);
+    return util.HasAbilityByName(ctx.player, 'Vivacious Pulse');
 end
 
 function M.Gate(ctx)

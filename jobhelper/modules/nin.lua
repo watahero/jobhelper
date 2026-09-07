@@ -69,14 +69,8 @@ for _, e in ipairs(ABILITIES) do M.defaults.use[e.key] = T{ false }; end
 -- Capability
 ----------------------------------------------------------------------------
 
---[[ The level this character counts as for NIN purposes, or 0. ]]--
 local function NinLevel(ctx)
-    if (ctx.mainJob == util.job.NIN) then
-        return ctx.mainLevel;
-    elseif (ctx.subJob == util.job.NIN) then
-        return ctx.subLevel;
-    end
-    return 0;
+    return util.JobLevel(ctx, util.job.NIN);
 end
 
 --[[
@@ -108,8 +102,7 @@ local function SpellReady(spellName)
 end
 
 local function HasAbility(ctx, abilityName)
-    local ability = util.GetAbility(abilityName);
-    return ability ~= nil and ctx.player:HasAbility(ability.Id);
+    return util.HasAbilityByName(ctx.player, abilityName);
 end
 
 ----------------------------------------------------------------------------
@@ -244,6 +237,9 @@ local SHORT = T{
     gekka = 'Gekka', yain = 'Yain', yonin = 'Yonin', innin = 'Innin',
 };
 
+-- Cached "withheld spells" footer, rebuilt at most every 2 seconds.
+local missing_cache = { text = nil, count = 0, at = -10 };
+
 --[[ One flowing row of toggles, wrapping every five. ]]--
 function M.Draw(ctx, cfg)
     local drawn = 0;
@@ -271,15 +267,28 @@ function M.Draw(ctx, cfg)
             'Recast your best available Utsusemi when shadows drop.');
     end
 
-    local missing = T{};
+    -- The withheld list only changes on job/level change or when a spell is
+    -- learned, so rebuild it at most every 2 seconds instead of per frame
+    -- (it costs five DAT reads and five string.formats).
+    if (missing_cache.text == nil or ctx.now - missing_cache.at >= 2) then
+        local lines = T{};
+        for _, e in ipairs(NINJUTSU) do
+            if (not Knows(ctx, e.spell)) then
+                local level = util.SpellLevel(util.GetSpell(e.spell), util.job.NIN);
+                lines[#lines + 1] = (level ~= nil)
+                    and string.format('%s  (needs level %d)', e.spell, level)
+                    or  string.format('%s  (not learnable)', e.spell);
+            end
+        end
+        missing_cache.count = #lines;
+        missing_cache.text = string.format('Unavailable at NIN %d:\n%s',
+            NinLevel(ctx), table.concat(lines, '\n'));
+        missing_cache.at = ctx.now;
+    end
+
     for _, e in ipairs(NINJUTSU) do
         if (Knows(ctx, e.spell)) then
             Toggle(SHORT[e.key] or e.label, cfg.use[e.key], e.excludes);
-        else
-            local level = util.SpellLevel(util.GetSpell(e.spell), util.job.NIN);
-            missing[#missing + 1] = (level ~= nil)
-                and string.format('%s  (needs level %d)', e.spell, level)
-                or  string.format('%s  (not learnable)', e.spell);
         end
     end
 
@@ -300,11 +309,10 @@ function M.Draw(ctx, cfg)
     end
 
     -- Withheld controls are stated, not silently missing.
-    if (#missing > 0) then
+    if (missing_cache.count > 0) then
         imgui.SameLine();
-        imgui.TextDisabled('+' .. #missing);
-        imgui.ShowHelp(string.format('Unavailable at NIN %d:\n%s',
-            NinLevel(ctx), table.concat(missing, '\n')));
+        imgui.TextDisabled('+' .. missing_cache.count);
+        imgui.ShowHelp(missing_cache.text);
     end
 end
 

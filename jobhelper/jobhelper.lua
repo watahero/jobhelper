@@ -13,7 +13,7 @@
 
 addon.name      = 'jobhelper';
 addon.author    = 'watahero';
-addon.version   = '2.0.1';
+addon.version   = '2.0.2';
 addon.desc      = 'RUN/PUP/NIN helpers in one compact bar for CatsEyeXI. Fork of runehelper, puphelper and ninhelper by GetAwayCoxn.';
 addon.link      = 'https://github.com/watahero/jobhelper';
 
@@ -190,6 +190,23 @@ local function ShouldHold(c)
     if (c.status == util.status.RESTING) then
         return true;
     end
+
+    -- Any rune, maneuver or ninjutsu strips Invisible, so hold everything
+    -- while it is up. puphelper had this for maneuvers only; runes were
+    -- observed breaking invisibility in play, hence it lives here now.
+    if ((c.buffs['Invisible'] or 0) > 0) then
+        return true;
+    end
+
+    -- Hold while a cast is in flight: job abilities are locked out anyway,
+    -- and acting on a spell's buff before the cast lands double-casts it
+    -- (seen in play as Utsusemi burning two shihei). Percent sits at 1
+    -- when idle and climbs 0..1 during a cast.
+    local casting = AshitaCore:GetMemoryManager():GetCastBar():GetPercent();
+    if (casting > 0 and casting < 1) then
+        return true;
+    end
+
     for name in pairs(util.incapacitating) do
         if ((c.buffs[name] or 0) > 0) then
             return true;

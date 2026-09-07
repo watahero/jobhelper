@@ -59,8 +59,7 @@ M.defaults = T{
 ----------------------------------------------------------------------------
 
 local function HasCooldown(ctx)
-    local ability = util.GetAbility('Cooldown');
-    return ability ~= nil and ctx.player:HasAbility(ability.Id);
+    return util.HasAbilityByName(ctx.player, 'Cooldown');
 end
 
 --[[
@@ -87,13 +86,6 @@ end
 function M.Tick(ctx, cfg)
     local entity = AshitaCore:GetMemoryManager():GetEntity();
     local petHpp = entity:GetHPPercent(ctx.petIndex);
-
-    -- Invisible is deliberately respected here and nowhere else: puphelper
-    -- skipped while invisible so a maneuver would not break sneaking past a
-    -- camp. That is a PUP habit, not a general rule, so it stays local.
-    if ((ctx.buffs['Invisible'] or 0) > 0) then
-        return;
-    end
 
     -- Deploy onto a target the player is already fighting, once the pet is
     -- idle and the mob is neither untouched nor nearly dead.

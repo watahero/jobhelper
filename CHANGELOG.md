@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.0.2 — 2026-08-20
+
+### Fixed
+- Nothing acts while Invisible any more. The hold was PUP-only (inherited
+  from puphelper), so RUN would cast a rune mid-sneak and strip Invisible.
+  It now lives in the host guard and covers every module.
+- Nothing acts while a spell cast is in flight. Previously the NIN module
+  could start a second Utsusemi during the first one's cast time, burning
+  an extra shihei.
+
+### Changed
+- Buff names are resolved once per buff id and memoized; the armed-frame
+  buff scan is now plain table reads.
+- The NIN "withheld spells" tooltip is rebuilt at most every 2 seconds
+  instead of every frame.
+- Shared job-level and has-ability helpers moved into util (no behavior
+  change).
+
 ## 2.0.1 — 2026-08-20
 
 ### Fixed
