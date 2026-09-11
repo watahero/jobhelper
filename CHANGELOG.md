@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.1.0 — 2026-09-11
+
+### Added
+- PUP overload guard. CatsEyeXI announces each maneuver's overload chance
+  in chat; the addon now remembers the last reported chance per element
+  and, when it is at or above a configurable threshold (OL slider,
+  default 5%, 0 disables), spaces that element's recasts out by 30s so
+  its burden can decay. Other elements are unaffected and can still cast
+  in the same tick. Motivated by a real overload in play at a reported
+  11% while the addon recast Light the moment a stack dropped. On servers
+  without the chat line the guard never engages.
+
 ## 2.0.2 — 2026-08-20
 
 ### Fixed

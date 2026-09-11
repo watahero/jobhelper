@@ -50,11 +50,53 @@ M.defaults = T{
     auto_deploy = T{ true },
     auto_cooldown = T{ false },
     auto_light = T{ 0, 90 },     -- force slot 1 to Light below [1], restore at [2]
+    overload_guard = T{ 5 },     -- hold an element whose reported overload
+                                 -- chance is at or above this %%; 0 disables
 
     -- Slot 1's user-chosen maneuver, remembered so auto-light can put it
     -- back after the pet recovers.
     light_restore = T{ -1 },
 };
+
+----------------------------------------------------------------------------
+-- Overload guard
+----------------------------------------------------------------------------
+
+--[[
+    CatsEyeXI announces the overload chance after every maneuver:
+
+        Godwen's Light Maneuver overload chance is 12%.
+
+    Stacking the same element keeps its burden high, and recasting the
+    moment a stack drops holds it there -- an 11%% roll produced a real
+    overload in play. Remember the last reported chance per element and,
+    when it is at or above the configured threshold, hold that element for
+    a while so its burden can decay; other elements are unaffected. The
+    next cast refreshes the reading, so a still-hot element just keeps
+    getting spaced out. On servers without this message the table stays
+    empty and the guard never engages.
+]]--
+
+local GUARD_HOLD = 30;  -- seconds to space out an element reported hot
+
+local burden = {};      -- ability name -> { chance, at }
+
+ashita.events.register('text_in', 'jobhelper_pup_burden', function (e)
+    local element, chance = string.match(e.message, '(%a+) Maneuver overload chance is (%d+)%%');
+    if (element ~= nil and MANEUVERS:contains(element)) then
+        burden[element .. ' Maneuver'] = { chance = tonumber(chance), at = os.time() };
+    end
+end);
+
+local function GuardHeld(name, cfg, now)
+    local threshold = cfg.overload_guard[1];
+    if (threshold <= 0) then
+        return false;
+    end
+
+    local b = burden[name];
+    return b ~= nil and b.chance >= threshold and (now - b.at) < GUARD_HOLD;
+end
 
 ----------------------------------------------------------------------------
 
@@ -128,10 +170,14 @@ function M.Tick(ctx, cfg)
 
         -- One cast per tick: maneuvers share a recast, so extra queued ones
         -- only fail with "Unable to use job ability". The 4s throttle comes
-        -- back for the next stack once the timer clears.
-        local needed = util.RotationNeeds(wanted, ctx.buffs);
-        if (#needed > 0) then
-            util.Cast('/ja "' .. needed[1] .. '" <me>');
+        -- back for the next stack once the timer clears. Elements the
+        -- overload guard is holding are skipped, not just delayed, so a
+        -- safe element can still go this tick.
+        for _, name in ipairs(util.RotationNeeds(wanted, ctx.buffs)) do
+            if (not GuardHeld(name, cfg, ctx.now)) then
+                util.Cast('/ja "' .. name .. '" <me>');
+                break;
+            end
         end
     end
 
@@ -191,6 +237,14 @@ function M.Draw(ctx, cfg)
     end
     imgui.PopItemWidth();
     imgui.ShowHelp('Repair below this pet HP%. 0 disables. Needs Automaton Oil +2.');
+
+    imgui.SameLine();
+    imgui.PushItemWidth(74);
+    if (imgui.SliderInt('##jhguard', cfg.overload_guard, 0, 50, 'OL:%d%%')) then
+        M.dirty = true;
+    end
+    imgui.PopItemWidth();
+    imgui.ShowHelp('Overload guard: when the server reports a maneuver\'s overload chance at or above this %, that element is spaced out (30s) so its burden decays. 0 disables.');
 
     imgui.SameLine();
     local low, high = { cfg.auto_light[1] }, { cfg.auto_light[2] };

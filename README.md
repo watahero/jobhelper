@@ -15,7 +15,7 @@ private server (level 75 cap, level sync, custom DATs via cexidats).
 | job | automation |
 |---|---|
 | **RUN** (main or sub) | keeps up to three chosen runes up; Vivacious Pulse below an HP% (MP% when every rune is Tenebrae) |
-| **PUP** (main, pet out) | keeps three chosen maneuvers up; auto Deploy, Repair below a pet HP%, auto-swap to Light below a pet HP%, Cooldown on Overload |
+| **PUP** (main, pet out) | keeps three chosen maneuvers up; auto Deploy, Repair below a pet HP%, auto-swap to Light below a pet HP%, Cooldown on Overload; overload guard that spaces out an element the server reports as overload-prone |
 | **NIN** (main or sub) | recasts the best Utsusemi you can cast when shadows drop, with toolbag opening; Migawari / Myoshu / Kakka / Gekka / Yain; Yonin / Innin; optional "wait for Haste" |
 
 Up to two modules can be live at once (your main job's plus a /RUN or /NIN

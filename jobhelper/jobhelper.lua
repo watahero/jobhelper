@@ -13,7 +13,7 @@
 
 addon.name      = 'jobhelper';
 addon.author    = 'watahero';
-addon.version   = '2.0.2';
+addon.version   = '2.1.0';
 addon.desc      = 'RUN/PUP/NIN helpers in one compact bar for CatsEyeXI. Fork of runehelper, puphelper and ninhelper by GetAwayCoxn.';
 addon.link      = 'https://github.com/watahero/jobhelper';
 
