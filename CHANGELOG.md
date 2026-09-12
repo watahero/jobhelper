@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.2.0 — 2026-09-12
+
+### Changed
+- The overload guard is now the user's rule, replacing three attempts at
+  predictive modeling: back off as soon as burden STARTS. Any maneuver
+  that prints a nonzero overload chance rests that element for about four
+  seconds per point printed (the measured drain rate) plus a small
+  margin; a 0 print casts freely. Manual casts print too, so they feed
+  the same rule. A live test disproved the previous per-stack increment
+  model: stacking three maneuvers from cold prints 0, which that model
+  refused as a "12 percent risk".
+- The OL slider is gone -- there is nothing to configure. The amber "!"
+  marker shows which element is resting and for how long.
+
 ## 2.1.6 — 2026-09-12
 
 ### Added
