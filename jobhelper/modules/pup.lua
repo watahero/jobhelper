@@ -338,18 +338,26 @@ function M.Draw(ctx, cfg)
         entity:GetHPPercent(ctx.petIndex), OilCount(ctx.now)));
     util.Tip('Pet HP / Automaton Oil +2 on hand.');
 
-    -- Elements the overload guard is holding, with the estimated wait --
-    -- a slot that quietly stops restacking must say why.
-    local held, seen = T{}, {};
-    for i = 1, 3 do
-        local pick = cfg.slots[i];
-        if (pick ~= nil and pick > -1 and not seen[pick]) then
-            seen[pick] = true;
-            local name = AbilityOf(pick);
-            local stacks_after = (ctx.buffs ~= nil and (ctx.buffs[name] or 0) or 0) + 1;
-            if (GuardHeld(name, cfg, ctx.now, stacks_after)) then
+    -- Casts the rotation wants RIGHT NOW that the guard is blocking --
+    -- and only those. Marking every slot's hypothetical next stack kept a
+    -- permanent "!N" on screen while nothing was even pending.
+    local held = T{};
+    if (ctx.armed and ctx.buffs ~= nil) then
+        local wanted = T{};
+        for i = 1, 3 do
+            local pick = cfg.slots[i];
+            if (pick ~= nil and pick > -1) then
+                wanted[#wanted + 1] = AbilityOf(pick);
+            end
+        end
+
+        local seen = {};
+        for _, name in ipairs(util.RotationNeeds(wanted, ctx.buffs)) do
+            local stacks_after = (ctx.buffs[name] or 0) + 1;
+            if (not seen[name] and GuardHeld(name, cfg, ctx.now, stacks_after)) then
+                seen[name] = true;
                 held[#held + 1] = string.format('%s %s',
-                    MANEUVERS[pick + 1], GuardWait(name, cfg, ctx.now, stacks_after));
+                    name:gsub(' Maneuver', ''), GuardWait(name, cfg, ctx.now, stacks_after));
             end
         end
     end

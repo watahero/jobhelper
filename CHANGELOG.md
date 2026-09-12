@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.5 — 2026-09-12
+
+### Fixed
+- The amber "!" marker showed constantly. It evaluated every slot's
+  hypothetical NEXT stack (already-stacked Light -> "a second Light would
+  need OL>12" -> flagged), so with buffs comfortably up it flagged
+  everything, permanently. It now flags only casts the rotation wants
+  right now that the guard is actually blocking, and shows nothing while
+  the bar is disarmed.
+
 ## 2.1.4 — 2026-09-12
 
 ### Fixed
