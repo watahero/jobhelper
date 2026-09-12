@@ -67,17 +67,25 @@ M.defaults = T{
 
         Godwen's Light Maneuver overload chance is 12%.
 
-    Stacking the same element keeps its burden high, and recasting the
-    moment a stack drops holds it there -- an 11%% roll produced a real
-    overload in play. Remember the last reported chance per element and,
-    when it is at or above the configured threshold, hold that element for
-    a while so its burden can decay; other elements are unaffected. The
-    next cast refreshes the reading, so a still-hot element just keeps
-    getting spaced out. On servers without this message the table stays
-    empty and the guard never engages.
+    Measured from play logs: every cast of an element ADDS roughly 8-10 to
+    that element's chance, while it decays at only about 1 per minute. So
+    "wait a bit and try again" -- what this guard did at first -- is a
+    death spiral: probe-casts build burden faster than it decays, and the
+    log showed Wind climbing 5 -> 14 -> 23 -> ... -> 64 with an overload on
+    nearly every recast, re-triggered one second after each Overload wore
+    off.
+
+    A cast is never a free probe. The element is held until its ESTIMATED
+    chance (last reading minus decay for the time elapsed) is back under
+    the threshold. A 23 reading with the default threshold of 5 holds that
+    element for ~18 minutes -- that is the mechanic; the play is to sit on
+    one stack or pick another element, and the bar shows the wait. Decay is
+    taken at the slowest rate observed so the guard errs toward holding.
+    On servers without the chat line the table stays empty and the guard
+    never engages.
 ]]--
 
-local GUARD_HOLD = 30;  -- seconds to space out an element reported hot
+local DECAY_PER_MIN = 1.0;
 
 local burden = {};      -- ability name -> { chance, at }
 
@@ -88,14 +96,22 @@ ashita.events.register('text_in', 'jobhelper_pup_burden', function (e)
     end
 end);
 
+local function EstimatedChance(name, now)
+    local b = burden[name];
+    if (b == nil) then
+        return 0;
+    end
+    return math.max(0, b.chance - ((now - b.at) / 60.0) * DECAY_PER_MIN);
+end
+
 local function GuardHeld(name, cfg, now)
     local threshold = cfg.overload_guard[1];
-    if (threshold <= 0) then
-        return false;
-    end
+    return threshold > 0 and EstimatedChance(name, now) >= threshold;
+end
 
-    local b = burden[name];
-    return b ~= nil and b.chance >= threshold and (now - b.at) < GUARD_HOLD;
+--[[ Minutes until an element's estimate falls below the threshold. ]]--
+local function GuardMinutes(name, cfg, now)
+    return math.ceil((EstimatedChance(name, now) - cfg.overload_guard[1] + 1) / DECAY_PER_MIN);
 end
 
 ----------------------------------------------------------------------------
@@ -245,7 +261,7 @@ function M.Draw(ctx, cfg)
         M.dirty = true;
     end
     imgui.PopItemWidth();
-    util.Tip('Overload guard: an element whose reported overload chance reaches this value is spaced out (30s) so its burden decays. 0 disables.');
+    util.Tip('Overload guard: an element whose estimated overload chance is at or above this value is held until decay brings it back under (about 1 per minute). 0 disables.');
 
     imgui.SameLine();
     local low, high = { cfg.auto_light[1] }, { cfg.auto_light[2] };
@@ -262,6 +278,27 @@ function M.Draw(ctx, cfg)
     imgui.TextDisabled(string.format('%d|%d',
         entity:GetHPPercent(ctx.petIndex), OilCount(ctx.now)));
     util.Tip('Pet HP / Automaton Oil +2 on hand.');
+
+    -- Elements the overload guard is holding, with the estimated wait --
+    -- a slot that quietly stops restacking must say why.
+    local held, seen = T{}, {};
+    for i = 1, 3 do
+        local pick = cfg.slots[i];
+        if (pick ~= nil and pick > -1 and not seen[pick]) then
+            seen[pick] = true;
+            local name = AbilityOf(pick);
+            if (GuardHeld(name, cfg, ctx.now)) then
+                held[#held + 1] = string.format('%s ~%dm',
+                    MANEUVERS[pick + 1], GuardMinutes(name, cfg, ctx.now));
+            end
+        end
+    end
+    if (#held > 0) then
+        imgui.SameLine();
+        imgui.TextColored({ 0.95, 0.75, 0.25, 1.0 }, '!' .. #held);
+        util.Tip('Overload guard is holding: ' .. table.concat(held, ', ')
+            .. '. Estimated wait until the chance is back under your threshold.');
+    end
 end
 
 ----------------------------------------------------------------------------

@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.1.2 — 2026-09-12
+
+### Fixed
+- The overload guard's 2.1.0 design caused the very spiral it was meant to
+  stop. It held a hot element for a fixed 30s and then "refreshed the
+  reading" by casting -- but play logs show each cast ADDS roughly 8-10 to
+  that element's chance while decay is only ~1 per minute, so the probe
+  casts built burden faster than it decayed (Wind: 5 -> 14 -> 23 -> ... ->
+  64, overloading on nearly every recast, re-triggered seconds after each
+  Overload wore off). A cast is never a free probe: the element is now
+  held until its estimated chance (last reading minus decay for the time
+  elapsed) is back under the threshold, and the bar shows a "!N" marker
+  naming the held elements and the estimated wait.
+
 ## 2.1.1 — 2026-09-12
 
 ### Fixed
