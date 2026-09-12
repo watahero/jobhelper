@@ -13,7 +13,7 @@
 
 addon.name      = 'jobhelper';
 addon.author    = 'watahero';
-addon.version   = '2.1.5';
+addon.version   = '2.1.6';
 addon.desc      = 'RUN/PUP/NIN helpers in one compact bar for CatsEyeXI. Fork of runehelper, puphelper and ninhelper by GetAwayCoxn.';
 addon.link      = 'https://github.com/watahero/jobhelper';
 
@@ -287,8 +287,13 @@ ashita.events.register('d3d_present', 'jobhelper_present', function ()
             state.enabled = false;
             state.hold = nil;
             util.Message('disarmed: ' .. off);
+            util.Log('disarmed: ' .. off);
         else
             state.hold = HoldReason(c);
+            if (state.hold ~= state.logged_hold) then
+                util.Log('hold: ' .. tostring(state.hold));
+                state.logged_hold = state.hold;
+            end
             if (state.hold == nil) then
                 for _, m in ipairs(state.live) do
                     m.Tick(c, config.modules[m.id]);
@@ -525,6 +530,17 @@ ashita.events.register('command', 'jobhelper_command', function (e)
                 IsTown(zone) and 'a town' or 'not a town'));
         end
 
+    elseif (verb == 'why') then
+        ReportStatus();
+        if (state.enabled and state.hold ~= nil) then
+            util.Message('held: ' .. state.hold);
+        end
+        for _, m in ipairs(state.live) do
+            if (m.Why ~= nil) then
+                m.Why(ctx, config.modules[m.id]);
+            end
+        end
+
     elseif (verb == 'burden') then
         local pup = Live('pup');
         if (pup ~= nil and pup.Debug ~= nil) then
@@ -544,7 +560,7 @@ ashita.events.register('command', 'jobhelper_command', function (e)
         end
 
     else
-        util.Message('commands: status, toggle, set, deploy, size, town add|del|list, burden, perf');
+        util.Message('commands: status, why, toggle, set, deploy, size, town add|del|list, burden, perf');
     end
 end);
 

@@ -96,10 +96,19 @@ local burden = {};      -- ability name -> { chance, at }
 ashita.events.register('text_in', 'jobhelper_pup_burden', function (e)
     -- Incoming chat carries colour/autotranslate control bytes; strip them
     -- so the pattern sees plain text.
-    local clean = e.message:gsub('[].', ''):gsub('%c', '');
+    local clean = e.message:gsub('[\30\31].', ''):gsub('%c', '');
+
+    if (clean:lower():find('overload', 1, true) ~= nil) then
+        -- Byte-escaped raw copy to the debug log: play evidence suggested
+        -- this parser may never have matched a live message, and the exact
+        -- wire bytes are the only way to settle that from a log file.
+        util.Log('raw: ' .. util.Escape(e.message));
+    end
+
     local element, chance = string.match(clean, '(%a+) Maneuver overload chance is (%d+)%%');
     if (element ~= nil and MANEUVERS:contains(element)) then
         burden[element .. ' Maneuver'] = { chance = tonumber(chance), at = os.time() };
+        util.Log(string.format('parsed: %s = %s', element, chance));
     end
 end);
 
@@ -158,7 +167,50 @@ local function GuardWait(name, cfg, now, stacks_after)
     return string.format('~%ds', math.max(seconds, 1));
 end
 
---[[ '/jh burden': ground truth for whether the chat parser is working. ]]--
+--[[
+    '/jh why': one snapshot of the whole maneuver decision, to chat AND the
+    debug log, so a stalled recast can be diagnosed the moment it is seen.
+]]--
+function M.Why(ctx, cfg)
+    local function say(line)
+        util.Message(line);
+        util.Log('why: ' .. line);
+    end
+
+    if (ctx.buffs == nil) then
+        say('pup: no scan yet -- arm the addon first');
+        return;
+    end
+
+    say(string.format('pup: overloaded=%s  maneuver_ready=%s',
+        tostring((ctx.buffs['Overload'] or 0) > 0),
+        tostring(ctx:Ready('Fire Maneuver'))));
+
+    local wanted = T{};
+    for i = 1, 3 do
+        local pick = cfg.slots[i];
+        if (pick ~= nil and pick > -1) then
+            wanted[#wanted + 1] = AbilityOf(pick);
+        end
+    end
+
+    local needed = util.RotationNeeds(wanted, ctx.buffs);
+    if (#needed == 0) then
+        say('pup: nothing needed -- every requested stack is up');
+        return;
+    end
+
+    for _, name in ipairs(needed) do
+        local stacks_after = (ctx.buffs[name] or 0) + 1;
+        say(string.format('pup: need %s (stack %d): estimate %d, predicted roll %d, %s',
+            name, stacks_after,
+            EstimatedChance(name, ctx.now),
+            PredictedRoll(name, ctx.now, stacks_after),
+            GuardHeld(name, cfg, ctx.now, stacks_after) and 'GUARD HELD' or 'castable'));
+    end
+end
+
+--[[ '/jh burden': the parsed table -- ground truth for the chat parser. ]]--
 function M.Debug(ctx)
     local any = false;
     for name, b in pairs(burden) do
@@ -167,8 +219,8 @@ function M.Debug(ctx)
             name, b.chance, os.time() - b.at, EstimatedChance(name, os.time())));
     end
     if (not any) then
-        util.Message('burden table is EMPTY -- no overload-chance chat line has been parsed. '
-            .. 'If maneuvers have printed chances this session, the parser is not matching and the guard is inert.');
+        util.Message('burden table is EMPTY -- no overload-chance line parsed this session. '
+            .. 'Raw captures land in logs/jobhelper-debug.log.');
     end
 end
 
@@ -247,11 +299,21 @@ function M.Tick(ctx, cfg)
         -- back for the next stack once the timer clears. Elements the
         -- overload guard is holding are skipped, not just delayed, so a
         -- safe element can still go this tick.
-        for _, name in ipairs(util.RotationNeeds(wanted, ctx.buffs)) do
-            local stacks_after = (ctx.buffs[name] or 0) + 1;
-            if (not GuardHeld(name, cfg, ctx.now, stacks_after)) then
-                util.Cast('/ja "' .. name .. '" <me>');
-                break;
+        local needed = util.RotationNeeds(wanted, ctx.buffs);
+        if (#needed > 0) then
+            util.Log('tick: need [' .. table.concat(needed, ', ') .. ']');
+
+            local cast = false;
+            for _, name in ipairs(needed) do
+                local stacks_after = (ctx.buffs[name] or 0) + 1;
+                if (not GuardHeld(name, cfg, ctx.now, stacks_after)) then
+                    util.Cast('/ja "' .. name .. '" <me>');
+                    cast = true;
+                    break;
+                end
+            end
+            if (not cast) then
+                util.Log('tick: every needed cast is guard-held');
             end
         end
     end

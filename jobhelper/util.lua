@@ -294,6 +294,7 @@ end
 ----------------------------------------------------------------------------
 
 function util.Cast(command)
+    util.Log('cast: ' .. command);
     AshitaCore:GetChatManager():QueueCommand(1, command);
 end
 
@@ -304,6 +305,30 @@ function util.Message(str)
 end
 
 local imgui = require('imgui');
+
+--[[
+    Append one timestamped line to Ashita\logs\jobhelper-debug.log. The
+    debug trail lives in a file rather than chat so a play session can be
+    diagnosed afterwards from disk. Failures are swallowed -- diagnostics
+    must never take the addon down.
+]]--
+function util.Log(line)
+    local ok, err = pcall(function ()
+        local path = string.format('%s/logs/jobhelper-debug.log', AshitaCore:GetInstallPath());
+        local f = io.open(path, 'a');
+        if (f ~= nil) then
+            f:write(string.format('[%s] %s\n', os.date('%H:%M:%S'), tostring(line)));
+            f:close();
+        end
+    end);
+end
+
+--[[ Byte-escape non-printable characters so wire formats are visible. ]]--
+function util.Escape(str)
+    return (str:gsub('[%z\1-\31\127-\255]', function (ch)
+        return string.format('<%02X>', ch:byte());
+    end));
+end
 
 --[[
     Hover tooltip on the previous widget. Replaces imgui.ShowHelp, whose

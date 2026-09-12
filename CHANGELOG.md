@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.1.6 — 2026-09-12
+
+### Added
+- Debug trail in logs/jobhelper-debug.log: every cast the addon queues,
+  every maneuver decision (what was needed, what was held), every parsed
+  overload reading, every hold/disarm transition -- and byte-escaped raw
+  copies of overload chat messages. Play evidence (a Wind cast that the
+  guard must have held if it had any data) indicates the chat parser has
+  likely never matched a live message; the raw captures settle that from
+  disk after the next session.
+- /jh why prints the full maneuver decision snapshot (hold state,
+  readiness, needed casts, per-element guard verdicts) to chat and the
+  debug log.
+
 ## 2.1.5 — 2026-09-12
 
 ### Fixed
