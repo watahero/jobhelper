@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.1.3 — 2026-09-12
+
+### Fixed
+- The overload guard's decay rate was wrong by an order of magnitude.
+  2.1.2 assumed burden decays ~1 point per minute; fitting 39 high-burden
+  reading pairs from two nights of logs (including two near-pure-decay
+  runs, 66->16 over 209s and 58->0 over 254s) puts it at ~0.265 per
+  second -- about 1 point every 4 seconds. The guard now uses 0.25/s, so
+  a 23 reading at the default threshold holds ~75 seconds instead of 18
+  minutes. The "!" marker shows the wait in seconds or minutes to match.
+
 ## 2.1.2 — 2026-09-12
 
 ### Fixed
