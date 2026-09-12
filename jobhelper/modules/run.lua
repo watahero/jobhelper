@@ -160,7 +160,7 @@ function M.Draw(ctx, cfg)
     if (maxSlots < 3) then
         imgui.SameLine();
         imgui.TextDisabled(maxSlots .. '/3');
-        imgui.ShowHelp(string.format('RUN level %d. Slot %d unlocks at %d.',
+        util.Tip(string.format('RUN level %d. Slot %d unlocks at %d.',
             RuneLevel(ctx), maxSlots + 1, cfg.slot_levels[maxSlots + 1] or 0));
     end
 
@@ -171,7 +171,7 @@ function M.Draw(ctx, cfg)
             M.dirty = true;
         end
         imgui.PopItemWidth();
-        imgui.ShowHelp('Vivacious Pulse below this HP% (MP% when every rune is Tenebrae). 0 disables.');
+        util.Tip('Vivacious Pulse below this HP (MP when every rune is Tenebrae). 0 disables.');
     end
 end
 

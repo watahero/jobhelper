@@ -303,4 +303,18 @@ function util.Message(str)
     print(chat.header('jobhelper'):append(chat.message(tostring(str))));
 end
 
+local imgui = require('imgui');
+
+--[[
+    Hover tooltip on the previous widget. Replaces imgui.ShowHelp, whose
+    '(?)' marker cost a glyph of bar width per hint -- four of them made a
+    ragged tail on the PUP row. Keep '%' out of tip text: SetTooltip is
+    printf-style and mangles it (the pet HP readout lost its '%' that way).
+]]--
+function util.Tip(text)
+    if (imgui.IsItemHovered()) then
+        imgui.SetTooltip(text);
+    end
+end
+
 return util;

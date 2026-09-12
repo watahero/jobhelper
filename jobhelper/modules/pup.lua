@@ -221,6 +221,7 @@ function M.Draw(ctx, cfg)
     if (imgui.Checkbox('Dep', cfg.auto_deploy)) then
         M.dirty = true;
     end
+    util.Tip('Send the pet at your target once you engage.');
 
     -- Only offered when the character actually has the ability. On a 75 cap
     -- this normally means the control is absent rather than present-and-dead.
@@ -236,7 +237,7 @@ function M.Draw(ctx, cfg)
         M.dirty = true;
     end
     imgui.PopItemWidth();
-    imgui.ShowHelp('Repair below this pet HP%. 0 disables. Needs Automaton Oil +2.');
+    util.Tip('Repair below this pet HP. 0 disables. Needs Automaton Oil +2.');
 
     imgui.SameLine();
     imgui.PushItemWidth(74);
@@ -244,7 +245,7 @@ function M.Draw(ctx, cfg)
         M.dirty = true;
     end
     imgui.PopItemWidth();
-    imgui.ShowHelp('Overload guard: when the server reports a maneuver\'s overload chance at or above this %, that element is spaced out (30s) so its burden decays. 0 disables.');
+    util.Tip('Overload guard: an element whose reported overload chance reaches this value is spaced out (30s) so its burden decays. 0 disables.');
 
     imgui.SameLine();
     local low, high = { cfg.auto_light[1] }, { cfg.auto_light[2] };
@@ -255,12 +256,12 @@ function M.Draw(ctx, cfg)
         M.dirty = true;
     end
     imgui.PopItemWidth();
-    imgui.ShowHelp('Force Light maneuver below the first %, restore your pick at the second. First 0 disables.');
+    util.Tip('Force Light maneuver below the first value, restore your pick at the second. First 0 disables.');
 
     imgui.SameLine();
-    imgui.TextDisabled(string.format('%d%%|%do',
+    imgui.TextDisabled(string.format('%d|%d',
         entity:GetHPPercent(ctx.petIndex), OilCount(ctx.now)));
-    imgui.ShowHelp('Pet HP | Automaton Oil +2 on hand.');
+    util.Tip('Pet HP / Automaton Oil +2 on hand.');
 end
 
 ----------------------------------------------------------------------------

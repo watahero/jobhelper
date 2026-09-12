@@ -257,7 +257,7 @@ function M.Draw(ctx, cfg)
             M.dirty = true;
         end
         if (help ~= nil) then
-            imgui.ShowHelp(help);
+            util.Tip(help);
         end
     end
 
@@ -312,7 +312,7 @@ function M.Draw(ctx, cfg)
     if (missing_cache.count > 0) then
         imgui.SameLine();
         imgui.TextDisabled('+' .. missing_cache.count);
-        imgui.ShowHelp(missing_cache.text);
+        util.Tip(missing_cache.text);
     end
 end
 

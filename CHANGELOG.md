@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.1.1 — 2026-09-12
+
+### Fixed
+- Armed-but-frozen after an interrupted cast. The mid-cast hold read the
+  cast bar's percent, and an interrupted cast (a failing Instant Warp
+  scroll, observed in play) can leave the bar parked mid-value, so the
+  hold never released. A bar that has not moved for 1.5s is now treated
+  as leftover, not as a cast.
+- The addon now says why it is doing nothing. Disarming (town, mounted,
+  dead) prints the reason in chat, the ON button turns amber "HLD" while
+  a hold (casting, invisible, resting, incapacitated) is active with the
+  reason on hover, and /jh status reports it too.
+- The PUP pet/oil readout was mangled (imgui treated its percent sign as
+  a printf directive); it now reads "hp|oil" cleanly.
+
+### Changed
+- All "(?)" help markers replaced by hover tooltips on the widgets
+  themselves, removing the ragged tail of markers from the bar rows.
+
 ## 2.1.0 — 2026-09-11
 
 ### Added

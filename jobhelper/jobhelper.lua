@@ -13,7 +13,7 @@
 
 addon.name      = 'jobhelper';
 addon.author    = 'watahero';
-addon.version   = '2.1.0';
+addon.version   = '2.1.1';
 addon.desc      = 'RUN/PUP/NIN helpers in one compact bar for CatsEyeXI. Fork of runehelper, puphelper and ninhelper by GetAwayCoxn.';
 addon.link      = 'https://github.com/watahero/jobhelper';
 
@@ -87,8 +87,9 @@ local state = {
     perf = { frames = 0, total = 0.0, last = 0.0 },
 };
 
-local btn_on  = { 0.13, 0.42, 0.17, 1.0 };
-local btn_off = { 0.42, 0.14, 0.14, 1.0 };
+local btn_on   = { 0.13, 0.42, 0.17, 1.0 };
+local btn_off  = { 0.42, 0.14, 0.14, 1.0 };
+local btn_held = { 0.48, 0.36, 0.08, 1.0 };
 
 ----------------------------------------------------------------------------
 -- Per-frame context
@@ -176,43 +177,73 @@ end
 
 --[[
     Conditions that switch the addon off rather than merely pausing it, so it
-    never silently re-arms when you did not ask for it.
+    never silently re-arms when you did not ask for it. Returns the reason,
+    which is announced in chat -- "enabled but nothing happens" must always
+    have a visible explanation.
 ]]--
-local function ShouldForceOff(c)
-    return IsTown(c.zone)
-        or (c.buffs['Mounted'] or 0) > 0
-        or c.status == util.status.DEAD
-        or c.status == util.status.DEAD_ENGAGED;
+local function ForceOffReason(c)
+    if (IsTown(c.zone)) then
+        return 'town zone';
+    elseif ((c.buffs['Mounted'] or 0) > 0) then
+        return 'mounted';
+    elseif (c.status == util.status.DEAD or c.status == util.status.DEAD_ENGAGED) then
+        return 'dead';
+    end
+    return nil;
 end
 
---[[ Conditions that pause this frame only. ]]--
-local function ShouldHold(c)
-    if (c.status == util.status.RESTING) then
+--[[
+    Whether a cast is genuinely in flight. Job abilities are locked out
+    during one anyway, and acting before a spell's buff lands double-casts
+    it (seen in play as Utsusemi burning two shihei).
+
+    A live cast bar's percent moves every frame between 0 and 1. An
+    INTERRUPTED cast can leave the bar parked mid-value -- observed in play
+    when a failing Instant Warp scroll froze it and the addon then held
+    forever, armed but doing nothing. So a bar that has not moved for a
+    moment is treated as leftover, not as a cast.
+]]--
+local castbar = { last = -1, moved_at = 0 };
+
+local function IsCasting()
+    local percent = AshitaCore:GetMemoryManager():GetCastBar():GetPercent();
+    if (percent <= 0 or percent >= 1) then
+        castbar.last = percent;
+        return false;
+    end
+
+    local t = os.clock();
+    if (percent ~= castbar.last) then
+        castbar.last = percent;
+        castbar.moved_at = t;
         return true;
+    end
+    return (t - castbar.moved_at) < 1.5;
+end
+
+--[[ Conditions that pause this frame only. Returns the reason, for status. ]]--
+local function HoldReason(c)
+    if (c.status == util.status.RESTING) then
+        return 'resting';
     end
 
     -- Any rune, maneuver or ninjutsu strips Invisible, so hold everything
     -- while it is up. puphelper had this for maneuvers only; runes were
     -- observed breaking invisibility in play, hence it lives here now.
     if ((c.buffs['Invisible'] or 0) > 0) then
-        return true;
+        return 'invisible';
     end
 
-    -- Hold while a cast is in flight: job abilities are locked out anyway,
-    -- and acting on a spell's buff before the cast lands double-casts it
-    -- (seen in play as Utsusemi burning two shihei). Percent sits at 1
-    -- when idle and climbs 0..1 during a cast.
-    local casting = AshitaCore:GetMemoryManager():GetCastBar():GetPercent();
-    if (casting > 0 and casting < 1) then
-        return true;
+    if (IsCasting()) then
+        return 'casting';
     end
 
     for name in pairs(util.incapacitating) do
         if ((c.buffs[name] or 0) > 0) then
-            return true;
+            return name:lower();
         end
     end
-    return false;
+    return nil;
 end
 
 ----------------------------------------------------------------------------
@@ -247,11 +278,20 @@ ashita.events.register('d3d_present', 'jobhelper_present', function ()
     if (state.enabled) then
         ExtendContext();
 
-        if (ShouldForceOff(c)) then
+        local off = ForceOffReason(c);
+        if (off ~= nil) then
+            -- Announce the disarm: this runs exactly once per transition,
+            -- and re-arming in the same spot announces it again, so an
+            -- enable that will not stick is never a mystery.
             state.enabled = false;
-        elseif (not ShouldHold(c)) then
-            for _, m in ipairs(state.live) do
-                m.Tick(c, config.modules[m.id]);
+            state.hold = nil;
+            util.Message('disarmed: ' .. off);
+        else
+            state.hold = HoldReason(c);
+            if (state.hold == nil) then
+                for _, m in ipairs(state.live) do
+                    m.Tick(c, config.modules[m.id]);
+                end
             end
         end
     end
@@ -279,11 +319,26 @@ ashita.events.register('d3d_present', 'jobhelper_present', function ()
         end
 
         if (imgui.Begin('jobhelper', config.open, flags)) then
-            imgui.PushStyleColor(ImGuiCol_Button, state.enabled and btn_on or btn_off);
-            if (imgui.SmallButton(state.enabled and 'ON ' or 'OFF')) then
+            -- Green running, red off, amber when armed but held -- so a bar
+            -- that is doing nothing on purpose says so at a glance.
+            local color, label = btn_off, 'OFF';
+            if (state.enabled) then
+                if (state.hold ~= nil) then
+                    color, label = btn_held, 'HLD';
+                else
+                    color, label = btn_on, 'ON ';
+                end
+            end
+
+            imgui.PushStyleColor(ImGuiCol_Button, color);
+            if (imgui.SmallButton(label)) then
                 state.enabled = not state.enabled;
+                state.hold = nil;
             end
             imgui.PopStyleColor();
+            if (state.hold ~= nil) then
+                util.Tip('held: ' .. state.hold);
+            end
 
             for i, m in ipairs(state.live) do
                 if (i == 1) then
@@ -374,8 +429,11 @@ local function ReportStatus()
         return;
     end
 
-    util.Message(string.format('%s, window open, %s.',
-        table.concat(names, ' + '), state.enabled and 'running' or 'idle -- /jh toggle to arm'));
+    local mode = 'idle -- /jh toggle to arm';
+    if (state.enabled) then
+        mode = (state.hold ~= nil) and ('running, but held: ' .. state.hold) or 'running';
+    end
+    util.Message(string.format('%s, window open, %s.', table.concat(names, ' + '), mode));
 end
 
 ashita.events.register('command', 'jobhelper_command', function (e)
