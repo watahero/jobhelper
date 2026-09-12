@@ -94,7 +94,10 @@ local DECAY_PER_SEC = 0.25;
 local burden = {};      -- ability name -> { chance, at }
 
 ashita.events.register('text_in', 'jobhelper_pup_burden', function (e)
-    local element, chance = string.match(e.message, '(%a+) Maneuver overload chance is (%d+)%%');
+    -- Incoming chat carries colour/autotranslate control bytes; strip them
+    -- so the pattern sees plain text.
+    local clean = e.message:gsub('[].', ''):gsub('%c', '');
+    local element, chance = string.match(clean, '(%a+) Maneuver overload chance is (%d+)%%');
     if (element ~= nil and MANEUVERS:contains(element)) then
         burden[element .. ' Maneuver'] = { chance = tonumber(chance), at = os.time() };
     end
@@ -108,18 +111,65 @@ local function EstimatedChance(name, now)
     return math.max(0, b.chance - (now - b.at) * DECAY_PER_SEC);
 end
 
-local function GuardHeld(name, cfg, now)
-    local threshold = cfg.overload_guard[1];
-    return threshold > 0 and EstimatedChance(name, now) >= threshold;
+--[[
+    What the cast itself will add. The printed number -- the one the server
+    ROLLS -- is the post-cast chance, and the increment scales with how
+    many stacks of that same element will then be up. Measured from the
+    fast-gap reading pairs: first stack prints +0..1, a second +6..12, a
+    third +14..16. Upper bounds are used so the guard errs safe.
+]]--
+local STACK_INCREMENT = T{ 2, 12, 16 };
+
+local function IncrementFor(stacks_after)
+    return STACK_INCREMENT[math.min(stacks_after, 3)];
 end
 
---[[ Rough wait until an element's estimate falls below the threshold. ]]--
-local function GuardWait(name, cfg, now)
-    local seconds = math.ceil((EstimatedChance(name, now) - cfg.overload_guard[1] + 1) / DECAY_PER_SEC);
+--[[
+    The guard question is "what would this cast PRINT", not "what has the
+    burden decayed to": predicted roll = estimate + increment. With the
+    default threshold of 5 this means single stacks flow freely (they
+    print 0-1) and duplicate stacks are refused outright, because a second
+    stack can never roll under ~12 no matter how long you wait -- exactly
+    the casts that produced every overload in the logs.
+]]--
+local function PredictedRoll(name, now, stacks_after)
+    return EstimatedChance(name, now) + IncrementFor(stacks_after);
+end
+
+local function GuardHeld(name, cfg, now, stacks_after)
+    local threshold = cfg.overload_guard[1];
+    return threshold > 0 and PredictedRoll(name, now, stacks_after) > threshold;
+end
+
+--[[
+    The wait until a held cast becomes acceptable -- or what OL it needs,
+    when no amount of waiting gets its predicted roll under the threshold.
+]]--
+local function GuardWait(name, cfg, now, stacks_after)
+    local inc = IncrementFor(stacks_after);
+    if (inc > cfg.overload_guard[1]) then
+        return string.format('needs OL>%d', inc);
+    end
+
+    local seconds = math.ceil((EstimatedChance(name, now) + inc - cfg.overload_guard[1]) / DECAY_PER_SEC);
     if (seconds >= 90) then
         return string.format('~%dm', math.ceil(seconds / 60));
     end
-    return string.format('~%ds', seconds);
+    return string.format('~%ds', math.max(seconds, 1));
+end
+
+--[[ '/jh burden': ground truth for whether the chat parser is working. ]]--
+function M.Debug(ctx)
+    local any = false;
+    for name, b in pairs(burden) do
+        any = true;
+        util.Message(string.format('%s: read %d, %ds ago, estimate %d',
+            name, b.chance, os.time() - b.at, EstimatedChance(name, os.time())));
+    end
+    if (not any) then
+        util.Message('burden table is EMPTY -- no overload-chance chat line has been parsed. '
+            .. 'If maneuvers have printed chances this session, the parser is not matching and the guard is inert.');
+    end
 end
 
 ----------------------------------------------------------------------------
@@ -198,7 +248,8 @@ function M.Tick(ctx, cfg)
         -- overload guard is holding are skipped, not just delayed, so a
         -- safe element can still go this tick.
         for _, name in ipairs(util.RotationNeeds(wanted, ctx.buffs)) do
-            if (not GuardHeld(name, cfg, ctx.now)) then
+            local stacks_after = (ctx.buffs[name] or 0) + 1;
+            if (not GuardHeld(name, cfg, ctx.now, stacks_after)) then
                 util.Cast('/ja "' .. name .. '" <me>');
                 break;
             end
@@ -269,7 +320,7 @@ function M.Draw(ctx, cfg)
         M.dirty = true;
     end
     imgui.PopItemWidth();
-    util.Tip('Overload guard: an element whose estimated overload chance is at or above this value is held until decay brings it back under (about 1 per minute). 0 disables.');
+    util.Tip('Overload guard: largest overload roll to accept. A cast is skipped when its predicted printed chance (decayed reading + stack increment) exceeds this. Duplicate stacks print 12+, so they need OL above that. 0 disables.');
 
     imgui.SameLine();
     local low, high = { cfg.auto_light[1] }, { cfg.auto_light[2] };
@@ -295,9 +346,10 @@ function M.Draw(ctx, cfg)
         if (pick ~= nil and pick > -1 and not seen[pick]) then
             seen[pick] = true;
             local name = AbilityOf(pick);
-            if (GuardHeld(name, cfg, ctx.now)) then
+            local stacks_after = (ctx.buffs ~= nil and (ctx.buffs[name] or 0) or 0) + 1;
+            if (GuardHeld(name, cfg, ctx.now, stacks_after)) then
                 held[#held + 1] = string.format('%s %s',
-                    MANEUVERS[pick + 1], GuardWait(name, cfg, ctx.now));
+                    MANEUVERS[pick + 1], GuardWait(name, cfg, ctx.now, stacks_after));
             end
         end
     end

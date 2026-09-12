@@ -13,7 +13,7 @@
 
 addon.name      = 'jobhelper';
 addon.author    = 'watahero';
-addon.version   = '2.1.3';
+addon.version   = '2.1.4';
 addon.desc      = 'RUN/PUP/NIN helpers in one compact bar for CatsEyeXI. Fork of runehelper, puphelper and ninhelper by GetAwayCoxn.';
 addon.link      = 'https://github.com/watahero/jobhelper';
 
@@ -524,6 +524,14 @@ ashita.events.register('command', 'jobhelper_command', function (e)
                 IsTown(zone) and 'a town' or 'not a town'));
         end
 
+    elseif (verb == 'burden') then
+        local pup = Live('pup');
+        if (pup ~= nil and pup.Debug ~= nil) then
+            pup.Debug(ctx);
+        else
+            util.Message('not on PUP with a pet out');
+        end
+
     elseif (verb == 'perf') then
         local p = state.perf;
         if (p.frames == 0) then
@@ -535,7 +543,7 @@ ashita.events.register('command', 'jobhelper_command', function (e)
         end
 
     else
-        util.Message('commands: status, toggle, set, deploy, size, town add|del|list, perf');
+        util.Message('commands: status, toggle, set, deploy, size, town add|del|list, burden, perf');
     end
 end);
 

@@ -1,5 +1,29 @@
 # Changelog
 
+## 2.1.4 — 2026-09-12
+
+### Fixed
+- The overload guard compared the wrong number. It held until the DECAYED
+  estimate fell under the threshold, but the chance the server rolls (and
+  prints) is the POST-cast value: the cast's own increment, which scales
+  with same-element stacks (+0-1 first, +6-12 second, +14-16 third). So
+  the guard waited politely and then authorized ~20 rolls -- every
+  overload in tonight's log was a duplicate-stack cast, while
+  single-stack Light printed 0 all night. The guard now predicts the
+  printed roll (estimate + stack increment) and skips any cast above the
+  OL threshold. At the default of 5, single stacks flow freely and
+  duplicate stacks are refused outright (they cannot roll under ~12);
+  the "!" marker says "needs OL>12" instead of a wait time in that case.
+- Chat parsing now strips colour/autotranslate control bytes before
+  matching, in case the live message bytes differ from the plain log
+  text.
+
+### Added
+- /jh burden prints each element's last parsed reading, its age, and the
+  current estimate -- if maneuvers have printed chances but this table is
+  empty, the parser is not matching and the guard is inert. Ground truth
+  for diagnosing the guard from in game.
+
 ## 2.1.3 — 2026-09-12
 
 ### Fixed
